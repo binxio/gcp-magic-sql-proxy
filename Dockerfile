@@ -8,3 +8,5 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags '-extldflags "-static"' github.co
 
 FROM gcr.io/cloudsql-docker/gce-proxy:1.16
 COPY --from=0		/go/gcp-magic-sql-proxy /
+
+ENTRYPOINT [ "/gcp-magic-sql-proxy" ]

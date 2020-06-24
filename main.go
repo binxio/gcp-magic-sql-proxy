@@ -18,6 +18,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	//Query for the right CloudRun instance.
 	resp, err := runService.Projects.Locations.Services.Get(
 		fmt.Sprintf("projects/%s/locations/%s/services/%s",
@@ -29,7 +30,7 @@ func main() {
 	}
 
 	//Compose Argument to call cloud_sql_proxy with.
-	sqlProxyCommandArg := fmt.Sprintf("-instances=%s=tcp:0.0.0.0:3306", getCloudRunVar(resp, "DB_SOCKET"))
+	sqlProxyCommandArg := fmt.Sprintf("-instances=%s=tcp:0.0.0.0:3306", getCloudRunVar(resp, getEnv("CR_DB_ENV_NAME", "DB_SOCKET")))
 	stdout.Print("Running: /cloud_sql_proxy " + sqlProxyCommandArg + "\n")
 	cmd := exec.Command("/cloud_sql_proxy", sqlProxyCommandArg)
 
