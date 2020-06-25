@@ -1,26 +1,27 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"google.golang.org/api/run/v1"
-	"log"
-	"os"
-	"os/exec"
-	"strings"
+    "context"
+    "fmt"
+    "log"
+    "os"
+    "os/exec"
+    "strings"
+
+    "google.golang.org/api/run/v1"
 )
 
 func main() {
-	ctx := context.Background()
+    ctx := context.Background()
 	stdout := log.New(os.Stdout, "", 1)
-	// Get Cloudrun service.
+	// Get CloudRun service.
 	runService, err := run.NewService(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	//Query for the right CloudRun instance.
-	resp, err := runService.Projects.Locations.Services.Get(
+	servicePtr, err := runService.Projects.Locations.Services.Get(
 		fmt.Sprintf("projects/%s/locations/%s/services/%s",
 			getEnv("GCP_PROJECT"),
 			getEnv("REGION", "europe-west1"),
@@ -29,8 +30,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	//Compose Argument to call cloud_sql_proxy with.
-	sqlProxyCommandArg := fmt.Sprintf("-instances=%s=tcp:0.0.0.0:3306", getCloudRunVar(resp, getEnv("CR_DB_ENV_NAME", "DB_SOCKET")))
+	//Compose Argument to use with call of cloud_sql_proxy.
+	sqlProxyCommandArg := fmt.Sprintf("-instances=%s=tcp:0.0.0.0:3306", getCloudRunVar(servicePtr, getEnv("CR_DB_ENV_NAME", "DB_SOCKET")))
+
 	stdout.Print("Running: /cloud_sql_proxy " + sqlProxyCommandArg + "\n")
 	cmd := exec.Command("/cloud_sql_proxy", sqlProxyCommandArg)
 
@@ -54,14 +56,17 @@ func getEnv(key string, defaultValueOptional ...string) string {
 	return value
 }
 
-func getCloudRunVar(resp *run.Service, variableName string) string {
-	retVal := ""
-	for _, con := range resp.Spec.Template.Spec.Containers {
+// Get the environment variableValue for a variableKey.
+// /cloudsql/ prefix if stripped to be able to use DB_SOCKET's 
+func getCloudRunVar(servicePtr *run.Service, variableName string) string {
+    variableVal := ""
+	for _, con := range servicePtr.Spec.Template.Spec.Containers {
 		for _, env := range con.Env {
 			if variableName == env.Name {
-				retVal = strings.Replace(env.Value, "/cloudsql/", "", -1)
+                variableVal = strings.Replace(env.Value, "/cloudsql/", "", -1)
 			}
 		}
 	}
-	return retVal
+	return variableVal
 }
+
